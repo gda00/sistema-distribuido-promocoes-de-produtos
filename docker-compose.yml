@@ -1,0 +1,9 @@
+services:
+    rabbitmq:
+        stdin_open: true
+        tty: true
+        container_name: rabbitmq
+        ports:
+            - 5672:5672
+            - 15672:15672
+        image: rabbitmq:4-management

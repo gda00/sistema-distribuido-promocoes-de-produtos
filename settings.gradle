@@ -1,0 +1,3 @@
+rootProject.name = 'sistema-distribuido-promocoes-de-produtos'
+
+include 'tutorial-rabbitmq'
