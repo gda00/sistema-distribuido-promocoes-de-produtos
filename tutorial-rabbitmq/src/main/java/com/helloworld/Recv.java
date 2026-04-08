@@ -9,18 +9,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class Recv {
+
     private final static String QUEUE_NAME = "hello";
 
     public static void main(String[] argv) throws Exception {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
-        Channel channel;
-        try (Connection connection = factory.newConnection()) {
-            channel = connection.createChannel();
-        }
+        Connection connection = factory.newConnection();
+        Channel channel = connection.createChannel();
 
-        Map<String, Object> args = Map.of("x-queue-type", "quorum");
-        channel.queueDeclare(QUEUE_NAME, true, false, false, args);
+        channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of("x-queue-type", "quorum"));
         System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
