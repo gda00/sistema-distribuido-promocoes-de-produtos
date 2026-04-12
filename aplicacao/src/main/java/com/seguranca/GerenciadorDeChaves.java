@@ -5,36 +5,41 @@ import java.nio.charset.StandardCharsets;
 
 public class GerenciadorDeChaves {
 
-    private final static String NOME_DO_ARQUIVO = "chavesPublicas.txt";
+    private final static String CAMINHO_ARQUIVO = "aplicacao/src/main/java/com/chavesPublicas.txt";
 
     public static String buscarChave(String nomeServico) throws IOException {
-        InputStream is = GerenciadorDeChaves.class.getClassLoader().getResourceAsStream(NOME_DO_ARQUIVO);
-
-        if (is == null) {
-            throw new IOException("Arquivo não encontrado no resources: " + NOME_DO_ARQUIVO);
+        File arquivo = new File(CAMINHO_ARQUIVO);
+        if (!arquivo.exists()) {
+            throw new IOException();
         }
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(arquivo, StandardCharsets.UTF_8))) {
             String linha;
             while ((linha = br.readLine()) != null) {
                 if (linha.trim().isEmpty()) continue;
 
                 String[] partes = linha.split(":", 2);
-
                 if (partes.length == 2 && partes[0].trim().equals(nomeServico)) {
                     return partes[1].trim();
                 }
             }
         }
-        throw new IllegalArgumentException("Chave não encontrada para o serviço: " + nomeServico);
+        throw new IllegalArgumentException("Chave não encontrada para: " + nomeServico);
     }
 
     public static void salvarChave(String nomeServico, String chavePublicaBase64) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(NOME_DO_ARQUIVO, true))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(CAMINHO_ARQUIVO, true))) {
             String novaLinha = nomeServico + ":" + chavePublicaBase64;
             writer.write(novaLinha);
             writer.newLine();
             writer.flush();
+        }
+    }
+
+    public static void limparArquivo() throws IOException {
+        File arquivo = new File(CAMINHO_ARQUIVO);
+        if (arquivo.exists()) {
+            new FileWriter(arquivo, false).close();
         }
     }
 }
