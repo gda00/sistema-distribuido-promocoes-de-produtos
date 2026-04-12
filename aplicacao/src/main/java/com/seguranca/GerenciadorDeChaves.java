@@ -27,9 +27,9 @@ public class GerenciadorDeChaves {
         throw new IllegalArgumentException("Chave não encontrada para: " + nomeServico);
     }
 
-    public static void salvarChave(String nomeServico, String chavePublicaBase64) throws IOException {
+    public static void salvarChave(String nomeServico, String chavePublica) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(CAMINHO_ARQUIVO, true))) {
-            String novaLinha = nomeServico + ":" + chavePublicaBase64;
+            String novaLinha = nomeServico + ":" + chavePublica;
             writer.write(novaLinha);
             writer.newLine();
             writer.flush();

@@ -18,5 +18,14 @@ public class EnvelopeUtil {
             return gson.fromJson(mensagemJsonCompleta, Envelope.class);
         }
 
+        public Envelope(String produtor, String dados, String assinatura) {
+            this.produtor = produtor;
+            this.dados = dados;
+            this.assinatura = assinatura;
+        }
+
+        public String toJson(){
+            return new Gson().toJson(this);
+        }
     }
 }

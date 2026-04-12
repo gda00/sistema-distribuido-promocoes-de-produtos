@@ -5,16 +5,21 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 import com.seguranca.Criptografia;
+import com.seguranca.EnvelopeUtil;
+import com.seguranca.GerenciadorDeChaves;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.util.Base64;
 import java.util.concurrent.TimeoutException;
 
 public class MicrosservicoPromocao {
 
     private final static String HOST = "localhost";
+    private final static String CLASS_NAME = MicrosservicoPromocao.class.getSimpleName();
 
     private final static String EXCHANGE_NAME = "promocoes";
     private final static String EXCHANGE_TYPE = "topic";
@@ -34,7 +39,11 @@ public class MicrosservicoPromocao {
         }
     }
 
+    private final static String CHAVE_PUBLICA_BASE64 = Base64.getEncoder().encodeToString(KEYPAIR.getPublic().getEncoded());
+
     public static void main(String[] args) throws IOException, TimeoutException {
+        GerenciadorDeChaves.salvarChave(CLASS_NAME, CHAVE_PUBLICA_BASE64);
+
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(HOST);
         Connection connection = connectionFactory.newConnection();
@@ -46,9 +55,9 @@ public class MicrosservicoPromocao {
         channel.basicQos(PREFETCH_COUNT);
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-            String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
+            String envelope = new String(delivery.getBody(), StandardCharsets.UTF_8);
             try{
-                publicarPromocao(message);
+                publicarPromocao(envelope, channel);
             } catch (TimeoutException e) {
                 throw new RuntimeException(e);
             } finally{
@@ -58,12 +67,26 @@ public class MicrosservicoPromocao {
         channel.basicConsume(ENTRY_QUEUE_NAME, false, deliverCallback, consumerTag -> {});
     }
 
-    private static void publicarPromocao(String message) throws IOException, TimeoutException {
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.setHost(HOST);
-        try(Connection connection = connectionFactory.newConnection(); Channel channel = connection.createChannel()){
-            channel.exchangeDeclare(EXCHANGE_NAME, EXCHANGE_TYPE);
-            channel.basicPublish(EXCHANGE_NAME, OUTPUT_ROUTING_KEY, null, message.getBytes(StandardCharsets.UTF_8));
+    private static void publicarPromocao(String message, Channel channel) throws TimeoutException {
+        EnvelopeUtil.Envelope envelopeRecebido = EnvelopeUtil.Envelope.separar(message);
+
+        try{
+            String chavePublicaBase64 = GerenciadorDeChaves.buscarChave(envelopeRecebido.getProdutor());
+            PublicKey chavePublica = Criptografia.carregarChavePublica(chavePublicaBase64);
+
+            if(Criptografia.validarAssinatura(envelopeRecebido.getDados(),envelopeRecebido.getAssinatura(),chavePublica)){
+                String novaAssinatura = Criptografia.assinarMensagem(envelopeRecebido.getDados(), KEYPAIR.getPrivate());
+
+                EnvelopeUtil.Envelope envelopeRetorno = new EnvelopeUtil.Envelope(CLASS_NAME, envelopeRecebido.getDados(),novaAssinatura);
+                String jsonSaida = envelopeRetorno.toJson();
+
+                channel.basicPublish(EXCHANGE_NAME, OUTPUT_ROUTING_KEY, null, jsonSaida.getBytes(StandardCharsets.UTF_8));
+            }
+            else{
+                System.err.println("Assinatura inválida, mensagem descartada");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }
