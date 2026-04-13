@@ -67,9 +67,9 @@ public class ProcessoCliente {
             String mensagem = new String(delivery.getBody(), StandardCharsets.UTF_8);
             String rk = delivery.getEnvelope().getRoutingKey();
             try{
-                EnvelopeUtil.Envelope envelope = EnvelopeUtil.Envelope.separar(mensagem);
+                //EnvelopeUtil.Envelope envelope = EnvelopeUtil.Envelope.separar(mensagem);
                 System.out.println("\n[NOTIFICAÇÃO - " + rk + "]");
-                System.out.println("Conteúdo: " + envelope.getDados());
+                System.out.println("Conteúdo: " + mensagem);
                 System.out.println("--------------------------------");
             } catch (Exception e) {
                 System.out.println("\n[NOTIFICAÇÃO - " + rk + "] Dados: " + mensagem);

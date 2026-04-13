@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-//import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -44,7 +43,7 @@ public class MicrosservicoGateway {
         }
     }
 
-    private final static String CHAVE_PUBLICA_BASE64 = Base64.getEncoder().encodeToString(KEYPAIR.getPrivate().getEncoded());
+    private final static String CHAVE_PUBLICA_BASE64 = Base64.getEncoder().encodeToString(KEYPAIR.getPublic().getEncoded());
 
     private static final List<String> promocoesValidadasLocal = new ArrayList<>();
 
@@ -110,11 +109,17 @@ public class MicrosservicoGateway {
                 switch (opcao){
                     case "1":
                         System.out.println("Digite os dados da promoção: ");
+                        System.out.println("Ex: {\"categoria\":\"livros\",\"idItem\":\"Lua Nova\",\"valor\":\"R$ 20,00\"}");
                         String dadosPromocao = scanner.nextLine();
+                        if (!dadosPromocao.trim().startsWith("{") || !dadosPromocao.trim().endsWith("}")) {
+                            System.out.println("[Erro] O formato precisa ser um JSON válido (começar com '{' e terminar com '}'). Tente novamente.");
+                            break;
+                        }
                         publicarEvento(channel, OUTPUT_ROUTING_KEY_RECEBIDA, dadosPromocao);
                         break;
                     case "2":
-                        System.out.println("Digite os dados do voto (ex: ID, +1): ");
+                        System.out.println("Digite os dados do voto: ");
+                        System.out.println("Ex: {\"idItem\":\"Lua Nova\",\"voto\":1}");
                         String dadosVoto = scanner.nextLine();
                         publicarEvento(channel, OUTPUT_ROUTING_KEY_VOTO, dadosVoto);
                         break;
