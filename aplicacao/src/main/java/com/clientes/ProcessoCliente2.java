@@ -4,7 +4,6 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
-import com.seguranca.EnvelopeUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +12,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
-public class ProcessoCliente {
+public class ProcessoCliente2 {
     private final static String HOST = "localhost";
     private final static String EXCHANGE_NAME = "promocoes";
     private final static String EXCHANGE_TYPE = "topic";
@@ -23,7 +22,8 @@ public class ProcessoCliente {
         System.out.println("--- SELEÇÃO DE PERFIL DE CLIENTE ---");
         System.out.println("Escolha entre: 1, 2, 3 ou 4: ");
 
-        String idEscolhido = scanner.nextLine();
+        //String idEscolhido = scanner.nextLine();
+        String idEscolhido = "4";
         List<String> interesses = carregarInteresse(idEscolhido);
         if (interesses == null) {
             System.err.println("ID inválido! Encerrando.");
@@ -47,7 +47,7 @@ public class ProcessoCliente {
         }
     }
 
-    private static void iniciarConsumidor(String idCliente, List<String> routingKeys) throws IOException, TimeoutException{
+    private static void iniciarConsumidor(String idCliente, List<String> routingKeys) throws IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost(HOST);
         Connection connection = factory.newConnection();
@@ -67,7 +67,6 @@ public class ProcessoCliente {
             String mensagem = new String(delivery.getBody(), StandardCharsets.UTF_8);
             String rk = delivery.getEnvelope().getRoutingKey();
             try{
-                //EnvelopeUtil.Envelope envelope = EnvelopeUtil.Envelope.separar(mensagem);
                 System.out.println("\n[NOTIFICAÇÃO - " + rk + "]");
                 System.out.println("Conteúdo: " + mensagem);
                 System.out.println("--------------------------------");
@@ -79,3 +78,5 @@ public class ProcessoCliente {
         channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {});
     }
 }
+
+
