@@ -27,7 +27,7 @@ public class GerenciadorDeChaves {
         throw new IllegalArgumentException("Chave não encontrada para: " + nomeServico);
     }
 
-    public static void salvarChave(String nomeServico, String chavePublica) throws IOException {
+    public static synchronized void salvarChave(String nomeServico, String chavePublica) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(CAMINHO_ARQUIVO, true))) {
             String novaLinha = nomeServico + ":" + chavePublica;
             writer.write(novaLinha);
@@ -36,7 +36,7 @@ public class GerenciadorDeChaves {
         }
     }
 
-    public static void limparArquivo() throws IOException {
+    public static synchronized void limparArquivo() throws IOException {
         File arquivo = new File(CAMINHO_ARQUIVO);
         if (arquivo.exists()) {
             new FileWriter(arquivo, false).close();

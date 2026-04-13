@@ -1,5 +1,7 @@
 package com.microsservico_promocao;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -43,6 +45,7 @@ public class MicrosservicoPromocao {
 
     public static void main(String[] args) throws IOException, TimeoutException {
         GerenciadorDeChaves.salvarChave(CLASS_NAME, CHAVE_PUBLICA_BASE64);
+        System.out.println("[" + CLASS_NAME + "] Chave pública registrada e pronta.");
 
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(HOST);
@@ -68,19 +71,26 @@ public class MicrosservicoPromocao {
     }
 
     private static void publicarPromocao(String message, Channel channel) throws TimeoutException {
+        System.out.println("[" + CLASS_NAME + "] Nova promoção recebida.");
+
         EnvelopeUtil.Envelope envelopeRecebido = EnvelopeUtil.Envelope.separar(message);
 
         try{
             String chavePublicaBase64 = GerenciadorDeChaves.buscarChave(envelopeRecebido.getProdutor());
-            PublicKey chavePublica = Criptografia.carregarChavePublica(chavePublicaBase64);
+            PublicKey chavePublicaRecebida = Criptografia.carregarChavePublica(chavePublicaBase64);
 
-            if(Criptografia.validarAssinatura(envelopeRecebido.getDados(),envelopeRecebido.getAssinatura(),chavePublica)){
+            if(Criptografia.validarAssinatura(envelopeRecebido.getDados(),envelopeRecebido.getAssinatura(), chavePublicaRecebida)){
+                System.out.println("[" + CLASS_NAME + "] Assinatura validada com sucesso.");
+
                 String novaAssinatura = Criptografia.assinarMensagem(envelopeRecebido.getDados(), KEYPAIR.getPrivate());
 
-                EnvelopeUtil.Envelope envelopeRetorno = new EnvelopeUtil.Envelope(CLASS_NAME, envelopeRecebido.getDados(),novaAssinatura);
+                EnvelopeUtil.Envelope envelopeRetorno = new EnvelopeUtil.Envelope(CLASS_NAME, envelopeRecebido.getDados(), novaAssinatura);
                 String jsonSaida = envelopeRetorno.toJson();
 
                 channel.basicPublish(EXCHANGE_NAME, OUTPUT_ROUTING_KEY, null, jsonSaida.getBytes(StandardCharsets.UTF_8));
+
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                System.out.println("[" + CLASS_NAME + "] Conteúdo enviado:\n"+gson.toJson(envelopeRetorno)+"\n");
             }
             else{
                 System.err.println("Assinatura inválida, mensagem descartada");
