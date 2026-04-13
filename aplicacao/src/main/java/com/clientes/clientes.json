@@ -1,0 +1,31 @@
+{
+  "clientes": [
+    {
+      "id": "1",
+      "interesses": [
+        "promocao.livros",
+        "promocao.games"
+      ]
+    },
+    {
+      "id": "2",
+      "interesses": [
+        "promocao.destaque"
+      ]
+    },
+    {
+      "id": "3",
+      "interesses": [
+        "promocao.eletronicos",
+        "promocao.vestuario",
+        "promocao.destaque"
+      ]
+    },
+    {
+      "id": "4",
+      "interesses": [
+        "promocao.*"
+      ]
+    }
+  ]
+}
