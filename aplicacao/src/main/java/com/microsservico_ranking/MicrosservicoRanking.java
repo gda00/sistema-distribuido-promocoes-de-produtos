@@ -52,7 +52,6 @@ public class MicrosservicoRanking {
 
     public static void main(String[] args) throws IOException, TimeoutException {
         GerenciadorDeChaves.salvarChave(CLASS_NAME, CHAVE_PUBLICA_BASE64);
-        System.out.println("[" + CLASS_NAME + "] Chave pública registrada e pronta.");
 
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(HOST);
@@ -78,7 +77,6 @@ public class MicrosservicoRanking {
     }
 
     private static void promocaoDestaque(String message, Channel channel) throws TimeoutException {
-        System.out.println("[" + CLASS_NAME + "] Possível promoção destaque recebida.");
         EnvelopeUtil.Envelope envelopeRecebido = EnvelopeUtil.Envelope.separar(message);
 
         try{
@@ -103,14 +101,12 @@ public class MicrosservicoRanking {
         RANKING.put(dados.getIdItem(), novoSaldo);
 
         if(novoSaldo >= HOT_DEAL_SCORE && !HOT_DEAL.contains(dados.getIdItem())){
-            System.out.println("[" + CLASS_NAME + "] Nova promoção destaque!");
             String novaAssinatura = Criptografia.assinarMensagem(envelopeRecebido.getDados(), KEYPAIR.getPrivate());
 
             EnvelopeUtil.Envelope envelopeRetorno = new EnvelopeUtil.Envelope(CLASS_NAME, envelopeRecebido.getDados(), novaAssinatura);
             String jsonSaida = envelopeRetorno.toJson();
 
             channel.basicPublish(EXCHANGE_NAME, OUTPUT_ROUTING_KEY, null, jsonSaida.getBytes(StandardCharsets.UTF_8));
-            System.out.println("[" + CLASS_NAME + "] Conteúdo enviado:\n"+jsonSaida+"\n");
             HOT_DEAL.add(dados.getIdItem());
         }
     }
