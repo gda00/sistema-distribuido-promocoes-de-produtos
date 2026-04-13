@@ -19,4 +19,6 @@ public class DadosEvento {
     public String getIdItem() { return idItem; }
     public String getValor() { return valor; }
     public String getVoto() { return voto; }
+
+    public void setIdItem(String idItem) { this.idItem = idItem; }
 }

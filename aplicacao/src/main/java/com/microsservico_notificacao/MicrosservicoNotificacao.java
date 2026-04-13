@@ -45,7 +45,6 @@ public class MicrosservicoNotificacao {
 
     public static void main(String[] args) throws IOException, TimeoutException {
         GerenciadorDeChaves.salvarChave(CLASS_NAME, CHAVE_PUBLICA_BASE64);
-        System.out.println("[" + CLASS_NAME + "] Chave pública registrada e pronta.");
 
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(HOST);
@@ -79,15 +78,18 @@ public class MicrosservicoNotificacao {
             PublicKey chavePublicaRecebida = Criptografia.carregarChavePublica(chavePublicaBase64);
 
             if(Criptografia.validarAssinatura(envelopeRecebido.getDados(),envelopeRecebido.getAssinatura(), chavePublicaRecebida)){
+                Gson gson = new Gson();
                 DadosEvento dados = new Gson().fromJson(envelopeRecebido.getDados(), DadosEvento.class);
-                String categoria = dados.getCategoria().toLowerCase();
 
-                String routingKeyDestino = "promocao." + categoria;
+                if(envelopeRecebido.getProdutor().equals("MicrosservicoRanking")){
+                    dados.setIdItem("[HOT DEAL] " + dados.getIdItem());
+                }
 
-                System.out.println("[" + CLASS_NAME + "] Nova notificação para "+routingKeyDestino+".");
+                String jsonModificado = gson.toJson(dados);
 
-                channel.basicPublish(EXCHANGE_NAME, routingKeyDestino, null, envelopeRecebido.getDados().getBytes(StandardCharsets.UTF_8));
-                System.out.println("[" + CLASS_NAME + "] Conteúdo enviado:\n"+envelopeRecebido.getDados()+"\n");
+                String routingKeyDestino = "promocao." + dados.getCategoria().toLowerCase();
+
+                channel.basicPublish(EXCHANGE_NAME, routingKeyDestino, null, jsonModificado.getBytes(StandardCharsets.UTF_8));
             }
             else{
                 System.err.println("Assinatura inválida, mensagem descartada");
