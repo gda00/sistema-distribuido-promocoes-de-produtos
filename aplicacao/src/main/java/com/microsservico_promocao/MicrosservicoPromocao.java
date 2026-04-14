@@ -1,5 +1,6 @@
 package com.microsservico_promocao;
 
+
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -68,6 +69,7 @@ public class MicrosservicoPromocao {
     }
 
     private static void publicarPromocao(String message, Channel channel) throws TimeoutException {
+
         EnvelopeUtil.Envelope envelopeRecebido = EnvelopeUtil.Envelope.separar(message);
 
         try{
@@ -75,12 +77,14 @@ public class MicrosservicoPromocao {
             PublicKey chavePublicaRecebida = Criptografia.carregarChavePublica(chavePublicaBase64);
 
             if(Criptografia.validarAssinatura(envelopeRecebido.getDados(),envelopeRecebido.getAssinatura(), chavePublicaRecebida)){
+
                 String novaAssinatura = Criptografia.assinarMensagem(envelopeRecebido.getDados(), KEYPAIR.getPrivate());
 
                 EnvelopeUtil.Envelope envelopeRetorno = new EnvelopeUtil.Envelope(CLASS_NAME, envelopeRecebido.getDados(), novaAssinatura);
                 String jsonSaida = envelopeRetorno.toJson();
 
                 channel.basicPublish(EXCHANGE_NAME, OUTPUT_ROUTING_KEY, null, jsonSaida.getBytes(StandardCharsets.UTF_8));
+
             }
             else{
                 System.err.println("Assinatura inválida, mensagem descartada");

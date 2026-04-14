@@ -80,16 +80,17 @@ public class MicrosservicoNotificacao {
             if(Criptografia.validarAssinatura(envelopeRecebido.getDados(),envelopeRecebido.getAssinatura(), chavePublicaRecebida)){
                 Gson gson = new Gson();
                 DadosEvento dados = new Gson().fromJson(envelopeRecebido.getDados(), DadosEvento.class);
-
+                //String categoria = dados.getCategoria().toLowerCase();
+                //String routingKeyDestino = "promocao." + categoria;
+                //System.out.println("[" + CLASS_NAME + "] Nova notificação para "+routingKeyDestino+".");
                 if(envelopeRecebido.getProdutor().equals("MicrosservicoRanking")){
                     dados.setIdItem("[HOT DEAL] " + dados.getIdItem());
                 }
-
                 String jsonModificado = gson.toJson(dados);
+                String routingKeyDestino = "promocao." + dados.getCategoria();
 
-                String routingKeyDestino = "promocao." + dados.getCategoria().toLowerCase();
-
-                channel.basicPublish(EXCHANGE_NAME, routingKeyDestino, null, jsonModificado.getBytes(StandardCharsets.UTF_8));
+                channel.basicPublish(EXCHANGE_NAME, routingKeyDestino, null,jsonModificado.getBytes(StandardCharsets.UTF_8));
+                System.out.println("[" + CLASS_NAME + "] Conteúdo enviado:\n"+envelopeRecebido.getDados()+"\n");
             }
             else{
                 System.err.println("Assinatura inválida, mensagem descartada");

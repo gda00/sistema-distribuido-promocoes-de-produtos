@@ -22,3 +22,4 @@ public class DadosEvento {
 
     public void setIdItem(String idItem) { this.idItem = idItem; }
 }
+
