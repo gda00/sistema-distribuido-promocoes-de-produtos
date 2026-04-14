@@ -11,6 +11,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import java.util.Map;
 
 public class ProcessoCliente1 {
     private final static String HOST = "localhost";
@@ -66,13 +70,23 @@ public class ProcessoCliente1 {
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String mensagem = new String(delivery.getBody(), StandardCharsets.UTF_8);
             String rk = delivery.getEnvelope().getRoutingKey();
-            try{
-                System.out.println("\n[NOTIFICAÇÃO - " + rk + "]");
-                System.out.println("Conteúdo: " + mensagem);
-                System.out.println("--------------------------------");
+
+            System.out.println("\n[NOTIFICAÇÃO - " + rk + "]");
+
+            try {
+                Gson gson = new Gson();
+                Type tipoMapa = new TypeToken<Map<String, String>>(){}.getType();
+                Map<String, String> dadosPromocao = gson.fromJson(mensagem, tipoMapa);
+
+                for (Map.Entry<String, String> entrada : dadosPromocao.entrySet()) {
+                    String chaveFormatada = entrada.getKey().substring(0, 1).toUpperCase() + entrada.getKey().substring(1);
+                    System.out.println("  -> " + chaveFormatada + ": " + entrada.getValue());
+                }
+
             } catch (Exception e) {
-                System.out.println("\n[NOTIFICAÇÃO - " + rk + "] Dados: " + mensagem);
+                System.out.println("  -> Mensagem: " + mensagem);
             }
+            System.out.println("--------------------------------");
         };
 
         channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {});

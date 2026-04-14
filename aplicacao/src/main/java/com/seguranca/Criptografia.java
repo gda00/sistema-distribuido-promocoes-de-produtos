@@ -32,13 +32,6 @@ public class Criptografia {
         return assinatura.verify(byesAssinatura);
     }
 
-    public static PrivateKey carregarChavePrivada(String chaveBase64) throws Exception{
-        byte[] bytesChave = Base64.getDecoder().decode(chaveBase64);
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(bytesChave);
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-        return kf.generatePrivate(spec);
-    }
-
     public static PublicKey carregarChavePublica(String chaveBase64) throws Exception{
         byte[] bytesChave = Base64.getDecoder().decode(chaveBase64);
         X509EncodedKeySpec spec = new X509EncodedKeySpec(bytesChave);

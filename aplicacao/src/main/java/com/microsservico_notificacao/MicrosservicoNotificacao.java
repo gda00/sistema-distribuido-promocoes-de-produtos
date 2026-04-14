@@ -87,7 +87,7 @@ public class MicrosservicoNotificacao {
                     dados.setIdItem("[HOT DEAL] " + dados.getIdItem());
                 }
                 String jsonModificado = gson.toJson(dados);
-                String routingKeyDestino = "promocao." + dados.getCategoria().toLowerCase();
+                String routingKeyDestino = "promocao." + dados.getCategoria();
 
                 channel.basicPublish(EXCHANGE_NAME, routingKeyDestino, null,jsonModificado.getBytes(StandardCharsets.UTF_8));
                 System.out.println("[" + CLASS_NAME + "] Conteúdo enviado:\n"+envelopeRecebido.getDados()+"\n");
