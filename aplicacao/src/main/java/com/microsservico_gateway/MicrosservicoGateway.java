@@ -1,10 +1,12 @@
 package com.microsservico_gateway;
 
+import com.google.gson.Gson;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 import com.seguranca.Criptografia;
+import com.seguranca.DadosEvento;
 import com.seguranca.EnvelopeUtil;
 import com.seguranca.GerenciadorDeChaves;
 
@@ -104,6 +106,7 @@ public class MicrosservicoGateway {
             System.out.print("Escolha uma opção: ");
 
             String opcao = scanner.nextLine();
+            Gson gson = new Gson();
 
             try {
                 switch (opcao){
@@ -115,13 +118,23 @@ public class MicrosservicoGateway {
                             System.out.println("[Erro] O formato precisa ser um JSON válido (começar com '{' e terminar com '}'). Tente novamente.");
                             break;
                         }
-                        publicarEvento(channel, OUTPUT_ROUTING_KEY_RECEBIDA, dadosPromocao);
+                        DadosEvento dadosPub = gson.fromJson(dadosPromocao, DadosEvento.class);
+                        dadosPub.setCategoria("categoria."+dadosPub.getCategoria());
+
+                        publicarEvento(channel, OUTPUT_ROUTING_KEY_RECEBIDA, gson.toJson(dadosPub));
                         break;
                     case "2":
                         System.out.println("Digite os dados do voto: ");
-                        System.out.println("Ex: {\"idItem\":\"Lua Nova\",\"voto\":1}");
+                        System.out.println("\"Ex: {\"categoria\":\"livros\",\"idItem\":\"Lua Nova\",\"valor\":\"R$ 20,00\",\"voto\":\"positivo\"}");
                         String dadosVoto = scanner.nextLine();
-                        publicarEvento(channel, OUTPUT_ROUTING_KEY_VOTO, dadosVoto);
+                        if (!dadosVoto.trim().startsWith("{") || !dadosVoto.trim().endsWith("}")) {
+                            System.out.println("[Erro] O formato precisa ser um JSON válido (começar com '{' e terminar com '}'). Tente novamente.");
+                            break;
+                        }
+                        DadosEvento dadosPubVoto = gson.fromJson(dadosVoto, DadosEvento.class);
+                        dadosPubVoto.setCategoria("categoria."+dadosPubVoto.getCategoria());
+
+                        publicarEvento(channel, OUTPUT_ROUTING_KEY_VOTO, gson.toJson(dadosPubVoto));
                         break;
                     case "3":
                         System.out.println("\n--- Promocoes Ativas ---");

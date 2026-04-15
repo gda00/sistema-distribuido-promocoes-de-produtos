@@ -1,18 +1,16 @@
 package com.clientes;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
+import com.seguranca.DadosEvento;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
@@ -43,10 +41,10 @@ public class ProcessoCliente2 {
 
     private static List<String> carregarInteresse(String id){
         switch (id) {
-            case "1": return Arrays.asList("promocao.livros", "promocao.games");
+            case "1": return Arrays.asList("promocao.categoria.livros", "promocao.categoria.games");
             case "2": return Arrays.asList("promocao.destaque");
-            case "3": return Arrays.asList("promocao.eletronicos", "promocao.vestuario", "promocao.destaque");
-            case "4": return Arrays.asList("promocao.*");
+            case "3": return Arrays.asList("promocao.categoria.eletronicos", "promocao.categoria.vestuario", "promocao.destaque");
+            case "4": return Arrays.asList("promocao.categoria.*");
             default: return null;
         }
     }
@@ -75,14 +73,9 @@ public class ProcessoCliente2 {
 
             try {
                 Gson gson = new Gson();
-                Type tipoMapa = new TypeToken<Map<String, String>>(){}.getType();
-                Map<String, String> dadosPromocao = gson.fromJson(mensagem, tipoMapa);
-
-                for (Map.Entry<String, String> entrada : dadosPromocao.entrySet()) {
-                    String chaveFormatada = entrada.getKey().substring(0, 1).toUpperCase() + entrada.getKey().substring(1);
-                    System.out.println("  -> " + chaveFormatada + ": " + entrada.getValue());
-                }
-
+                DadosEvento dadosEvento = gson.fromJson(mensagem, DadosEvento.class);
+                System.out.println("Item: "+ dadosEvento.getIdItem());
+                System.out.println("Valor: "+ dadosEvento.getValor());
             } catch (Exception e) {
                 System.out.println("  -> Mensagem: " + mensagem);
             }

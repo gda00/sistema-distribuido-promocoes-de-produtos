@@ -21,5 +21,6 @@ public class DadosEvento {
     public String getVoto() { return voto; }
 
     public void setIdItem(String idItem) { this.idItem = idItem; }
+    public void setCategoria(String categoria) { this.categoria = categoria; }
 }
 
