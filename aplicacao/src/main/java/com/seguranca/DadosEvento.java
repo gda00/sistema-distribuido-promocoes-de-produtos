@@ -7,7 +7,6 @@ public class DadosEvento {
     private String valor;
     private String voto;
 
-    //campos novos
     private String idPromocao;
     private String emailLoja;
     private String descricao;
@@ -44,6 +43,7 @@ public class DadosEvento {
     public void setEmailLoja(String emailLoja)   { this.emailLoja = emailLoja; }
     public void setVoto(String voto)             { this.voto = voto; }
     public void setDescricao(String descricao)   { this.descricao = descricao; }
+    public void setValor(String valor)           { this.valor = valor; }
 
     @Override
     public String toString() {
