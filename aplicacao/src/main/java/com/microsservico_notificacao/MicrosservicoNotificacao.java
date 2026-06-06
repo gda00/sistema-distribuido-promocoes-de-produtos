@@ -18,21 +18,6 @@ import java.security.PublicKey;
 import java.util.Base64;
 import java.util.concurrent.TimeoutException;
 
-/**
- * MS Notificação — responsabilidades:
- *
- *  Consome "promocao.publicada"  (publicado pelo MS Promoção)
- *    → valida assinatura
- *    → envia e-mail para loja: "promoção aprovada"
- *    → publica "promocao.categoria" para o Gateway encaminhar via SSE
- *      aos consumidores inscritos nessa categoria
- *
- *  Consome "promocao.destaque"   (publicado pelo MS Ranking)
- *    → valida assinatura
- *    → envia e-mail para loja: "virou hot deal"
- *    → publica "notificacao.hotdeal" para o Gateway encaminhar via SSE
- *      a todos os consumidores (hot deals são exibidos para todos)
- */
 public class MicrosservicoNotificacao {
 
     private final static String HOST = "localhost";
@@ -41,15 +26,11 @@ public class MicrosservicoNotificacao {
     private final static String EXCHANGE_NAME = "promocoes";
     private final static String EXCHANGE_TYPE = "topic";
 
-    // Fila de entrada: escuta tanto promoções publicadas quanto destaques
     private final static String ENTRY_QUEUE_NAME     = "fila.notificacao";
     private final static String ENTRY_ROUTING_KEY_PUBLICADA = "promocao.publicada";
     private final static String ENTRY_ROUTING_KEY_DESTAQUE  = "promocao.destaque";
 
-    // Routing keys de saída
-    // "promocao.categoria" → Gateway filtra por categoria do usuário e envia via SSE
     private final static String OUTPUT_ROUTING_KEY_CATEGORIA = "promocao.categoria";
-    // "notificacao.hotdeal" → Gateway envia SSE de destaque para todos os conectados
     private final static String OUTPUT_ROUTING_KEY_HOTDEAL   = "notificacao.hotdeal";
 
     private final static int PREFETCH_COUNT = 1;
@@ -78,7 +59,6 @@ public class MicrosservicoNotificacao {
         channel.exchangeDeclare(EXCHANGE_NAME, EXCHANGE_TYPE);
         channel.queueDeclare(ENTRY_QUEUE_NAME, true, false, false, null);
 
-        // Bind para os dois routing keys de entrada
         channel.queueBind(ENTRY_QUEUE_NAME, EXCHANGE_NAME, ENTRY_ROUTING_KEY_PUBLICADA);
         channel.queueBind(ENTRY_QUEUE_NAME, EXCHANGE_NAME, ENTRY_ROUTING_KEY_DESTAQUE);
 
@@ -86,7 +66,6 @@ public class MicrosservicoNotificacao {
 
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String envelope = new String(delivery.getBody(), StandardCharsets.UTF_8);
-            // O routing key nos diz QUAL evento chegou (publicada ou destaque)
             String routingKeyRecebido = delivery.getEnvelope().getRoutingKey();
 
             try {
@@ -102,15 +81,11 @@ public class MicrosservicoNotificacao {
         System.out.println("[MS Notificação] Aguardando eventos...");
     }
 
-    // ---------------------------------------------------------------
-    // Lógica central: o que fazer dependendo do evento recebido
-    // ---------------------------------------------------------------
     private static void processarEvento(String message, String routingKeyRecebido, Channel channel)
             throws Exception {
 
         EnvelopeUtil.Envelope envelopeRecebido = EnvelopeUtil.Envelope.separar(message);
 
-        // 1. Validar assinatura digital
         String chavePublicaBase64 = GerenciadorDeChaves.buscarChave(envelopeRecebido.getProdutor());
         PublicKey chavePublica = Criptografia.carregarChavePublica(chavePublicaBase64);
 
@@ -122,11 +97,9 @@ public class MicrosservicoNotificacao {
             return;
         }
 
-        // 2. Deserializar os dados da promoção
         Gson gson = new Gson();
         DadosEvento dados = gson.fromJson(envelopeRecebido.getDados(), DadosEvento.class);
 
-        // 3. Agir conforme o tipo de evento
         if (ENTRY_ROUTING_KEY_PUBLICADA.equals(routingKeyRecebido)) {
             tratarPromocaoPublicada(dados, envelopeRecebido.getDados(), channel);
         } else if (ENTRY_ROUTING_KEY_DESTAQUE.equals(routingKeyRecebido)) {
@@ -136,46 +109,34 @@ public class MicrosservicoNotificacao {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Promoção publicada → e-mail "aprovada" + SSE para categoria
-    // ---------------------------------------------------------------
     private static void tratarPromocaoPublicada(DadosEvento dados, String dadosJson, Channel channel)
             throws Exception {
 
         System.out.println("[MS Notificação] Promoção publicada: " + dados.getIdItem());
 
-        // E-mail para a loja
         ServicoEmail.enviarEmailPromocaoAprovada(
                 dados.getEmailLoja(),
                 dados.getIdItem(),
                 dados.getIdPromocao());
 
-        // Publicar para o Gateway encaminhar via SSE aos consumidores da categoria
-        // O Gateway vai filtrar quem segue essa categoria
         publicarParaGateway(channel, OUTPUT_ROUTING_KEY_CATEGORIA, dadosJson);
     }
 
-    // ---------------------------------------------------------------
-    // Promoção em destaque (hot deal) → e-mail "hot deal" + SSE global
-    // ---------------------------------------------------------------
+
     private static void tratarPromocaoDestaque(DadosEvento dados, String dadosJson, Channel channel)
             throws Exception {
 
         System.out.println("[MS Notificação] Hot Deal detectado: " + dados.getIdItem());
 
-        // E-mail para a loja
+        //e-mail
         ServicoEmail.enviarEmailHotDeal(
                 dados.getEmailLoja(),
                 dados.getIdItem(),
                 dados.getIdPromocao());
 
-        // Publicar para o Gateway encaminhar via SSE a todos os conectados
         publicarParaGateway(channel, OUTPUT_ROUTING_KEY_HOTDEAL, dadosJson);
     }
-
-    // ---------------------------------------------------------------
-    // Publica um evento re-assinado para o Gateway consumir
-    // ---------------------------------------------------------------
+    
     private static void publicarParaGateway(Channel channel, String routingKey, String dadosJson)
             throws Exception {
 

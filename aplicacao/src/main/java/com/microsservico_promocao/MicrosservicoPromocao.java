@@ -34,10 +34,6 @@ public class MicrosservicoPromocao {
 
     private final static int PREFETCH_COUNT = 1;
 
-    // ---------------------------------------------------------------
-    // Persistência em memória: id → promoção validada
-    // (representa o "Banco de Dados" do MS Promoção no diagrama)
-    // ---------------------------------------------------------------
     private static final Map<String, DadosEvento> PROMOCOES_SALVAS = new ConcurrentHashMap<>();
 
     private final static KeyPair KEYPAIR;
@@ -85,7 +81,6 @@ public class MicrosservicoPromocao {
         EnvelopeUtil.Envelope envelopeRecebido = EnvelopeUtil.Envelope.separar(message);
 
         try {
-            // 1. Buscar chave pública do produtor (Gateway ou Loja) e validar assinatura
             String chavePublicaBase64 = GerenciadorDeChaves.buscarChave(envelopeRecebido.getProdutor());
             PublicKey chavePublicaRecebida = Criptografia.carregarChavePublica(chavePublicaBase64);
 
@@ -97,7 +92,6 @@ public class MicrosservicoPromocao {
                 return;
             }
 
-            // 2. Deserializar e persistir localmente
             Gson gson = new Gson();
             DadosEvento dados = gson.fromJson(envelopeRecebido.getDados(), DadosEvento.class);
 
@@ -107,7 +101,6 @@ public class MicrosservicoPromocao {
                         + " | " + dados.getIdItem());
             }
 
-            // 3. Re-assinar com a chave privada deste MS e publicar como "promocao.publicada"
             String novaAssinatura = Criptografia.assinarMensagem(
                     envelopeRecebido.getDados(), KEYPAIR.getPrivate());
 
@@ -125,7 +118,6 @@ public class MicrosservicoPromocao {
         }
     }
 
-    // Acessível por outros componentes na mesma JVM se necessário
     public static Map<String, DadosEvento> getPromocoesSalvas() {
         return PROMOCOES_SALVAS;
     }

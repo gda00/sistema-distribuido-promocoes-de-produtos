@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PromoHub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #F5F4F0;
+            --surface:   #FFFFFF;
+            --navy:      #0F1628;
+            --navy-soft: #1E2A45;
+            --coral:     #E85D04;
+            --coral-lt:  #FFF0E8;
+            --green:     #2D9E6B;
+            --green-lt:  #E8F8F1;
+            --red:       #D63636;
+            --red-lt:    #FEF0F0;
+            --muted:     #7A7A7A;
+            --border:    #E3E1DC;
+            --text:      #1A1A1A;
+            --radius:    12px;
+            --radius-sm: 8px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: var(--navy);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        .logo span { color: var(--coral); }
+        nav { display: flex; gap: 4px; }
+        nav button {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.55);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 6px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        nav button.active {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        nav button:hover { color: #fff; background: rgba(255,255,255,0.07); }
+
+        /* ── TOAST ── */
+        #toast-container {
+            position: fixed;
+            top: 72px;
+            right: 20px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 340px;
+        }
+        .toast {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--coral);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 0.82rem;
+            animation: slideIn 0.25s ease;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .toast.hotdeal { border-left-color: var(--coral); }
+        .toast.categoria { border-left-color: var(--green); }
+        .toast .t-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 2px;
+        }
+        .toast .t-title { font-weight: 600; color: var(--text); }
+        .toast .t-sub { color: var(--muted); margin-top: 2px; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ── SSE STATUS ── */
+        .sse-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 99px;
+            background: rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.5);
+        }
+        .sse-badge .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--muted);
+            flex-shrink: 0;
+        }
+        .sse-badge.connected .dot { background: var(--green); animation: pulse 2s infinite; }
+        .sse-badge.connected { color: rgba(255,255,255,0.75); }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+
+        /* ── LAYOUT ── */
+        main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+        section.view { display: none; }
+        section.view.active { display: block; }
+
+        /* ── CONSUMER VIEW ── */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .top-bar h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .refresh-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text);
+            transition: background 0.15s;
+        }
+        .refresh-btn:hover { background: var(--bg); }
+        .refresh-btn svg { width: 14px; height: 14px; }
+
+        /* ── CATEGORY FILTERS ── */
+        .categories-section { margin-bottom: 1.5rem; }
+        .categories-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .category-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--text);
+        }
+        .chip:hover { border-color: var(--navy); }
+        .chip.active {
+            background: var(--navy);
+            color: #fff;
+            border-color: var(--navy);
+        }
+        .chip.followed {
+            background: var(--green-lt);
+            border-color: var(--green);
+            color: var(--green);
+        }
+        .chip-follow-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            color: inherit;
+            font-size: 0.8rem;
+        }
+
+        /* ── PROMOTIONS GRID ── */
+        .promotions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .promo-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .promo-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); transform: translateY(-2px); }
+        .promo-card.hot {
+            border-color: var(--coral);
+            box-shadow: 0 0 0 1px var(--coral);
+        }
+        .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            line-height: 1.3;
+        }
+        .hot-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--coral);
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 3px 8px;
+            border-radius: 99px;
+            flex-shrink: 0;
+        }
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .cat-pill {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            padding: 3px 10px;
+            color: var(--muted);
+        }
+        .price-tag {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .card-desc {
+            font-size: 0.82rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        .card-actions { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+        .vote-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            transition: all 0.15s;
+            color: var(--text);
+        }
+        .vote-btn.up:hover, .vote-btn.up.voted {
+            background: var(--green-lt);
+            border-color: var(--green);
+            color: var(--green);
+        }
+        .vote-btn.down:hover, .vote-btn.down.voted {
+            background: var(--red-lt);
+            border-color: var(--red);
+            color: var(--red);
+        }
+        .vote-btn svg { width: 14px; height: 14px; }
+        .score-display {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted);
+            margin-left: auto;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--muted);
+        }
+        .empty svg { margin-bottom: 1rem; opacity: 0.3; }
+        .empty p { font-size: 0.9rem; }
+
+        /* ── LOADING ── */
+        .loading-row {
+            display: flex;
+            justify-content: center;
+            padding: 3rem;
+        }
+        .spinner {
+            width: 28px; height: 28px;
+            border: 2px solid var(--border);
+            border-top-color: var(--navy);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── STORE VIEW ── */
+        .store-wrapper {
+            max-width: 560px;
+            margin: 0 auto;
+        }
+        .store-header { margin-bottom: 2rem; }
+        .store-header h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .store-header p { color: var(--muted); font-size: 0.875rem; margin-top: 4px; }
+
+        .form-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+        }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .form-group label span {
+            color: var(--muted);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.875rem;
+            color: var(--text);
+            background: var(--bg);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--navy);
+            background: var(--surface);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--navy);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            margin-top: 0.5rem;
+        }
+        .submit-btn:hover { background: var(--navy-soft); }
+        .submit-btn:active { transform: scale(0.99); }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .feedback {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 500;
+            display: none;
+        }
+        .feedback.success { background: var(--green-lt); color: var(--green); }
+        .feedback.error   { background: var(--red-lt);   color: var(--red); }
+        .feedback.show    { display: block; }
+
+        /* ── NOTIFICATION HISTORY ── */
+        .notif-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-top: 2rem;
+            overflow: hidden;
+        }
+        .notif-panel-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .notif-panel-header button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .notif-list { max-height: 200px; overflow-y: auto; }
+        .notif-item {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+        .notif-dot.hotdeal { background: var(--coral); }
+        .notif-dot.categoria { background: var(--green); }
+        .notif-empty {
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">Promo<span>Hub</span></div>
+    <nav>
+        <button class="active" onclick="showView('consumer', this)">Promoções</button>
+        <button onclick="showView('store', this)">Loja</button>
+    </nav>
+    <div class="sse-badge" id="sse-badge">
+        <div class="dot"></div>
+        <span id="sse-label">SSE desconectado</span>
+    </div>
+</header>
+
+<div id="toast-container"></div>
+
+<!-- ── CONSUMER VIEW ── -->
+<main>
+    <section class="view active" id="view-consumer">
+
+        <div class="top-bar">
+            <h1>Promoções</h1>
+            <button class="refresh-btn" onclick="loadPromocoes()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 4v6h6M23 20v-6h-6"/>
+                    <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                </svg>
+                Atualizar
+            </button>
+        </div>
+
+        <!-- Categorias -->
+        <div class="categories-section">
+            <div class="categories-label">Filtrar por categoria</div>
+            <div class="category-chips" id="category-chips">
+                <div class="chip active" data-cat="" onclick="filterCategory('', this)">Todas</div>
+                <div class="chip" data-cat="livros" onclick="filterCategory('livros', this)">
+                    📚 Livros
+                    <button class="chip-follow-btn" onclick="toggleFollow(event, 'livros')" title="Seguir categoria">＋</button>
+                </div>
+                <div class="chip" data-cat="eletronicos" onclick="filterCategory('eletronicos', this)">
+                    💻 Eletrônicos
+                    <button class="chip-follow-btn" onclick="toggleFollow(event, 'eletronicos')" title="Seguir categoria">＋</button>
+                </div>
+                <div class="chip" data-cat="vestuario" onclick="filterCategory('vestuario', this)">
+                    👕 Vestuário
+                    <button class="chip-follow-btn" onclick="toggleFollow(event, 'vestuario')" title="Seguir categoria">＋</button>
+                </div>
+                <div class="chip" data-cat="alimentos" onclick="filterCategory('alimentos', this)">
+                    🍎 Alimentos
+                    <button class="chip-follow-btn" onclick="toggleFollow(event, 'alimentos')" title="Seguir categoria">＋</button>
+                </div>
+                <div class="chip" data-cat="esportes" onclick="filterCategory('esportes', this)">
+                    ⚽ Esportes
+                    <button class="chip-follow-btn" onclick="toggleFollow(event, 'esportes')" title="Seguir categoria">＋</button>
+                </div>
+                <div class="chip" data-cat="tecnologia" onclick="filterCategory('tecnologia', this)">
+                    🔧 Tecnologia
+                    <button class="chip-follow-btn" onclick="toggleFollow(event, 'tecnologia')" title="Seguir categoria">＋</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid de promoções -->
+        <div id="promotions-container">
+            <div class="loading-row"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Painel de notificações SSE -->
+        <div class="notif-panel">
+            <div class="notif-panel-header">
+                Notificações em tempo real
+                <button onclick="clearNotifications()">Limpar</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                <div class="notif-empty">Nenhuma notificação ainda. Siga categorias para receber alertas.</div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ── STORE VIEW ── -->
+    <section class="view" id="view-store">
+        <div class="store-wrapper">
+            <div class="store-header">
+                <h1>Cadastrar Promoção</h1>
+                <p>Preencha os dados e assine digitalmente para publicar sua promoção.</p>
+            </div>
+            <div class="form-card">
+                <div class="form-group">
+                    <label>Nome do produto</label>
+                    <input type="text" id="f-item" placeholder="Ex: Notebook Dell Inspiron 15" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select id="f-categoria">
+                            <option value="">Selecione…</option>
+                            <option value="livros">Livros</option>
+                            <option value="eletronicos">Eletrônicos</option>
+                            <option value="vestuario">Vestuário</option>
+                            <option value="alimentos">Alimentos</option>
+                            <option value="esportes">Esportes</option>
+                            <option value="tecnologia">Tecnologia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor</label>
+                        <input type="text" id="f-valor" placeholder="Ex: R$ 1.299,00" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Descrição <span>(opcional)</span></label>
+                    <textarea id="f-desc" placeholder="Detalhes, condições, prazo da promoção…"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>E-mail da loja <span>(para notificações)</span></label>
+                    <input type="email" id="f-email" placeholder="loja@exemplo.com" />
+                </div>
+                <button class="submit-btn" id="submit-btn" onclick="cadastrarPromocao()">
+                    Publicar Promoção
+                </button>
+                <div class="feedback" id="store-feedback"></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    const BASE_URL = ''; // servido pelo próprio Spring Boot — URLs relativas
+
+    // ── Estado local ──────────────────────────────────────────────────
+    let todasPromocoes  = [];
+    let hotDeals        = new Set();     // idItem dos hot deals
+    let votosLocais     = {};            // idPromocao → 'positivo' | 'negativo'
+    let categoriasAtivas= new Set();    // categorias seguidas pelo usuário
+    let filtroAtual     = '';
+    let notificacoes    = [];
+    const CLIENT_ID     = 'client-' + Math.random().toString(36).slice(2, 9);
+
+    // ── Navegação ─────────────────────────────────────────────────────
+    function showView(id, btn) {
+        document.querySelectorAll('section.view').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById('view-' + id).classList.add('active');
+        btn.classList.add('active');
+        if (id === 'consumer') loadPromocoes();
+    }
+
+    // ── Carregar promoções ────────────────────────────────────────────
+    async function loadPromocoes() {
+        document.getElementById('promotions-container').innerHTML =
+            '<div class="loading-row"><div class="spinner"></div></div>';
+        try {
+            const res  = await fetch(`${BASE_URL}/api/promocoes`);
+            const raw  = await res.json();
+            // A API retorna List<String>: cada elemento é um JSON string
+            todasPromocoes = raw.map(item => {
+                try { return typeof item === 'string' ? JSON.parse(item) : item; }
+                catch { return null; }
+            }).filter(Boolean);
+            renderPromocoes();
+        } catch (e) {
+            document.getElementById('promotions-container').innerHTML =
+                `<div class="empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+            <path d="M12 8v4m0 4h.01"/>
+          </svg>
+          <p>Não foi possível carregar as promoções.<br>Verifique se o servidor está em execução.</p>
+        </div>`;
+        }
+    }
+
+    function renderPromocoes() {
+        const lista = filtroAtual
+            ? todasPromocoes.filter(p => stripPrefix(p.categoria) === filtroAtual)
+            : todasPromocoes;
+
+        if (!lista.length) {
+            document.getElementById('promotions-container').innerHTML =
+                `<div class="empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20 12V22H4V12M22 7H2v5h20V7zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+          </svg>
+          <p>Nenhuma promoção encontrada.</p>
+        </div>`;
+            return;
+        }
+
+        const html = lista.map(p => buildCard(p)).join('');
+        document.getElementById('promotions-container').innerHTML =
+            `<div class="promotions-grid">${html}</div>`;
+    }
+
+    function buildCard(p) {
+        const id     = p.idPromocao || '';
+        const nome   = p.idItem || 'Produto';
+        const cat    = stripPrefix(p.categoria);
+        const valor  = p.valor || '';
+        const desc   = p.descricao || '';
+        const isHot  = hotDeals.has(p.idItem);
+        const meuVoto= votosLocais[id] || '';
+
+        return `
+    <div class="promo-card ${isHot ? 'hot' : ''}" id="card-${id}">
+      <div class="card-header">
+        <div class="card-title">${escHtml(nome)}</div>
+        ${isHot ? '<span class="hot-badge">🔥 Hot Deal</span>' : ''}
+      </div>
+      <div class="card-meta">
+        <span class="cat-pill">${escHtml(cat)}</span>
+        <span class="price-tag">${escHtml(valor)}</span>
+      </div>
+      ${desc ? `<p class="card-desc">${escHtml(desc)}</p>` : ''}
+      <div class="card-actions">
+        <button class="vote-btn up ${meuVoto === 'positivo' ? 'voted' : ''}"
+                onclick="votar('${escHtml(id)}', '${escHtml(nome)}', '${escHtml(cat)}', 'positivo', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+            <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+          </svg>
+          Curtir
+        </button>
+        <button class="vote-btn down ${meuVoto === 'negativo' ? 'voted' : ''}"
+                onclick="votar('${escHtml(id)}', '${escHtml(nome)}', '${escHtml(cat)}', 'negativo', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
+            <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+          </svg>
+          Não curtir
+        </button>
+      </div>
+    </div>`;
+    }
+
+    // ── Votar ─────────────────────────────────────────────────────────
+    async function votar(idPromocao, idItem, categoria, voto, btn) {
+        if (votosLocais[idPromocao]) {
+            showToast('info', 'Voto', 'Você já votou nesta promoção.');
+            return;
+        }
+        const payload = { idPromocao, idItem, categoria, voto };
+        try {
+            const res = await fetch(`${BASE_URL}/api/votos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                votosLocais[idPromocao] = voto;
+                // Atualizar visual do card
+                const card = document.getElementById('card-' + idPromocao);
+                if (card) {
+                    card.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('voted'));
+                    btn.classList.add('voted');
+                }
+                showToast('categoria', 'Voto registrado', `Seu voto em "${idItem}" foi contabilizado.`);
+            } else {
+                showToast('hotdeal', 'Erro', 'Não foi possível registrar o voto.');
+            }
+        } catch {
+            showToast('hotdeal', 'Erro de conexão', 'Servidor indisponível.');
+        }
+    }
+
+    // ── Filtro de categorias ──────────────────────────────────────────
+    function filterCategory(cat, el) {
+        document.querySelectorAll('.chip[data-cat]').forEach(c => {
+            if (c !== el) c.classList.remove('active');
+        });
+        // Não remover 'followed' ao ativar filtro
+        if (!el.classList.contains('active')) el.classList.add('active');
+        filtroAtual = cat;
+        renderPromocoes();
+    }
+
+    // ── Seguir / Deixar de seguir categoria ──────────────────────────
+    async function toggleFollow(event, categoria) {
+        event.stopPropagation(); // não acionar o filtro
+        const jaSegue = categoriasAtivas.has(categoria);
+        const chip = document.querySelector(`.chip[data-cat="${categoria}"]`);
+
+        if (jaSegue) {
+            // Cancelar interesse
+            try {
+                await fetch(`${BASE_URL}/api/interesses/${categoria}`, { method: 'DELETE' });
+            } catch { /* endpoint pode não existir ainda */ }
+            categoriasAtivas.delete(categoria);
+            chip.classList.remove('followed');
+            chip.querySelector('.chip-follow-btn').textContent = '＋';
+            showToast('categoria', 'Interesse cancelado', `Você deixou de seguir "${categoria}".`);
+        } else {
+            // Registrar interesse
+            try {
+                await fetch(`${BASE_URL}/api/interesses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId: CLIENT_ID, categoria })
+                });
+            } catch { /* endpoint pode não existir ainda */ }
+            categoriasAtivas.add(categoria);
+            chip.classList.add('followed');
+            chip.querySelector('.chip-follow-btn').textContent = '✓';
+            showToast('categoria', 'Interesse registrado', `Você agora segue "${categoria}".`);
+        }
+    }
+
+    // ── Cadastrar promoção (Loja) ─────────────────────────────────────
+    async function cadastrarPromocao() {
+        const idItem    = document.getElementById('f-item').value.trim();
+        const categoria = document.getElementById('f-categoria').value;
+        const valor     = document.getElementById('f-valor').value.trim();
+        const descricao = document.getElementById('f-desc').value.trim();
+        const emailLoja = document.getElementById('f-email').value.trim();
+
+        if (!idItem || !categoria || !valor || !emailLoja) {
+            showFeedback('error', 'Preencha todos os campos obrigatórios.');
+            return;
+        }
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Publicando…';
+
+        const payload = {
+            idPromocao: generateUUID(),
+            categoria,       // backend adiciona "categoria." automaticamente
+            idItem,
+            valor,
+            emailLoja,
+            descricao
+        };
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/promocoes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                showFeedback('success', '✓ Promoção enviada! Aguarde a validação.');
+                document.getElementById('f-item').value = '';
+                document.getElementById('f-categoria').value = '';
+                document.getElementById('f-valor').value = '';
+                document.getElementById('f-desc').value = '';
+                document.getElementById('f-email').value = '';
+            } else {
+                const msg = await res.text();
+                showFeedback('error', 'Erro: ' + msg);
+            }
+        } catch {
+            showFeedback('error', 'Não foi possível conectar ao servidor.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Publicar Promoção';
+        }
+    }
+
+    // ── SSE ───────────────────────────────────────────────────────────
+    function connectSSE() {
+        const badge = document.getElementById('sse-badge');
+        const label = document.getElementById('sse-label');
+
+        try {
+            // Passa o clientId como query param para o Gateway filtrar por interesse
+            const evtSource = new EventSource(`${BASE_URL}/api/sse?clientId=${CLIENT_ID}`);
+
+            evtSource.onopen = () => {
+                badge.classList.add('connected');
+                label.textContent = 'SSE conectado';
+            };
+
+            // Evento de categoria (promoção na categoria seguida)
+            evtSource.addEventListener('promocao.categoria', e => {
+                const data = parseSSE(e.data);
+                if (!data) return;
+                const cat = stripPrefix(data.categoria);
+                if (!categoriasAtivas.has(cat)) return; // filtrar localmente também
+                showToast('categoria', `Nova promoção em ${cat}`, data.idItem + ' — ' + data.valor);
+                addNotification('categoria', `[${cat}] ${data.idItem} — ${data.valor}`);
+            });
+
+            // Evento de hot deal (exibir para todos)
+            evtSource.addEventListener('notificacao.hotdeal', e => {
+                const data = parseSSE(e.data);
+                if (!data) return;
+                hotDeals.add(data.idItem);
+                showToast('hotdeal', '🔥 Hot Deal!', `"${data.idItem}" está em destaque!`);
+                addNotification('hotdeal', `Hot Deal: ${data.idItem} — ${data.valor}`);
+                // Atualizar card se estiver visível
+                renderPromocoes();
+            });
+
+            // Fallback: evento genérico sem tipo
+            evtSource.onmessage = e => {
+                const data = parseSSE(e.data);
+                if (!data) return;
+                showToast('categoria', 'Notificação', data.idItem || JSON.stringify(data));
+                addNotification('categoria', data.idItem || JSON.stringify(data));
+            };
+
+            evtSource.onerror = () => {
+                badge.classList.remove('connected');
+                label.textContent = 'SSE desconectado';
+                // Tentar reconectar em 5s
+                setTimeout(connectSSE, 5000);
+                evtSource.close();
+            };
+
+        } catch {
+            label.textContent = 'SSE indisponível';
+        }
+    }
+
+    function parseSSE(raw) {
+        try { return JSON.parse(raw); } catch { return null; }
+    }
+
+    // ── Notificações (painel) ─────────────────────────────────────────
+    function addNotification(tipo, texto) {
+        const item = { tipo, texto, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) };
+        notificacoes.unshift(item);
+        renderNotifications();
+    }
+
+    function renderNotifications() {
+        const list = document.getElementById('notif-list');
+        if (!notificacoes.length) {
+            list.innerHTML = '<div class="notif-empty">Nenhuma notificação ainda.</div>';
+            return;
+        }
+        list.innerHTML = notificacoes.slice(0, 30).map(n => `
+      <div class="notif-item">
+        <div class="notif-dot ${n.tipo}"></div>
+        <div>
+          <div style="color:var(--text);font-weight:500">${escHtml(n.texto)}</div>
+          <div style="color:var(--muted);font-size:0.72rem;margin-top:2px">${n.hora}</div>
+        </div>
+      </div>
+    `).join('');
+    }
+
+    function clearNotifications() {
+        notificacoes = [];
+        renderNotifications();
+    }
+
+    // ── Toasts ────────────────────────────────────────────────────────
+    function showToast(tipo, titulo, sub) {
+        const c = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${tipo}`;
+        el.innerHTML = `
+      <div class="t-label">${tipo === 'hotdeal' ? '🔥 Destaque' : '🔔 Notificação'}</div>
+      <div class="t-title">${escHtml(titulo)}</div>
+      <div class="t-sub">${escHtml(sub)}</div>`;
+        c.prepend(el);
+        setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.4s'; setTimeout(() => el.remove(), 400); }, 4000);
+    }
+
+    // ── Feedback do formulário ────────────────────────────────────────
+    function showFeedback(tipo, msg) {
+        const el = document.getElementById('store-feedback');
+        el.className = `feedback ${tipo} show`;
+        el.textContent = msg;
+        setTimeout(() => el.classList.remove('show'), 5000);
+    }
+
+    // ── Utilidades ────────────────────────────────────────────────────
+    function stripPrefix(cat) {
+        if (!cat) return '';
+        return cat.startsWith('categoria.') ? cat.slice('categoria.'.length) : cat;
+    }
+
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────
+    loadPromocoes();
+    connectSSE();
+</script>
+</body>
+</html>

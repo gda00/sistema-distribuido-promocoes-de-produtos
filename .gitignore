@@ -31,3 +31,5 @@ out/
 # Gradle
 .gradle
 build/
+
+aplicacao/src/main/java/com/chavesPublicas.txt
