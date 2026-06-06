@@ -1,10 +1,11 @@
 package com;
 
-import com.microsservico_gateway.MicrosservicoGateway;
+import com.microsservico_gateway.GatewayApplication;
 import com.microsservico_notificacao.MicrosservicoNotificacao;
 import com.microsservico_promocao.MicrosservicoPromocao;
 import com.microsservico_ranking.MicrosservicoRanking;
 import com.seguranca.GerenciadorDeChaves;
+import org.springframework.boot.SpringApplication;
 
 import java.io.IOException;
 
@@ -37,7 +38,7 @@ public class Main {
         }).start();
 
         try {
-            MicrosservicoGateway.main(new String[]{});
+            SpringApplication.run(GatewayApplication.class, args);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -31,4 +31,3 @@ out/
 # Gradle
 .gradle
 build/
-tutorial-rabbitmq/build
