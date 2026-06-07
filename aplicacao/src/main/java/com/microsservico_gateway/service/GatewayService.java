@@ -24,7 +24,7 @@ public class GatewayService {
     private final Gson gson = new Gson();
     private final KeyPair keyPair;
 
-    private final List<String> promocoesValidadas = new CopyOnWriteArrayList<>();
+    private final ConcurrentHashMap<String, String> promocoesValidadas = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<String, SseEmitter> emitters      = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Set<String>> interesses    = new ConcurrentHashMap<>();
@@ -38,6 +38,9 @@ public class GatewayService {
     }
 
     public void cadastrarPromocao(DadosEvento dados) throws Exception {
+        if (dados.getIdPromocao() == null || dados.getIdPromocao().isBlank()) {
+            dados.setIdPromocao(UUID.randomUUID().toString());
+        }
         dados.setCategoria("categoria." + dados.getCategoria());
         publicarEvento(RabbitMQConfig.ROUTING_KEY_RECEBIDA, gson.toJson(dados));
     }
@@ -49,7 +52,7 @@ public class GatewayService {
     }
 
     public List<String> listarPromocoes() {
-        return Collections.unmodifiableList(promocoesValidadas);
+        return new ArrayList<>(promocoesValidadas.values());
     }
 
     public SseEmitter novaConexao(String clienteId) {
@@ -64,6 +67,11 @@ public class GatewayService {
         emitter.onCompletion(cleanup);
         emitter.onTimeout(cleanup);
         emitter.onError(e -> cleanup.run());
+
+        try {
+            emitter.send(SseEmitter.event().name("ping").data("ok"));
+        } catch (IOException ignored) {
+        }
 
         return emitter;
     }
@@ -86,12 +94,19 @@ public class GatewayService {
             PublicKey chave = Criptografia.carregarChavePublica(chaveBase64);
 
             if (Criptografia.validarAssinatura(envelope.getDados(), envelope.getAssinatura(), chave)) {
-                promocoesValidadas.add(envelope.getDados());
+                DadosEvento dados = gson.fromJson(envelope.getDados(), DadosEvento.class);
+                String id = dados.getIdPromocao();
+                if (id != null && !id.isBlank()) {
+                    String anterior = promocoesValidadas.putIfAbsent(id, envelope.getDados());
+                    if (anterior != null) {
+                        System.out.println("[Gateway] Promoção " + id + " já existe — ignorada.");
+                    }
+                }
             } else {
                 System.err.println("[Gateway] Assinatura inválida — promoção descartada.");
             }
         } catch (Exception e) {
-            System.err.println("[Gateway] Erro ao processar promoção: " + e.getMessage());
+            System.err.println("[Gateway] Erro: " + e.getMessage());
         }
     }
 
@@ -113,9 +128,9 @@ public class GatewayService {
             DadosEvento evento = gson.fromJson(envelope.getDados(), DadosEvento.class);
 
             if (RabbitMQConfig.ROUTING_KEY_HOTDEAL.equals(routingKey)) {
-                transmitirParaTodos("hotdeal", evento);        // hot deal → todos os clientes
+                transmitirParaTodos("notificacao.hotdeal", evento);        // hot deal → todos os clientes
             } else {
-                transmitirParaCategoria("promocao", evento);   // categoria → clientes inscritos
+                transmitirParaCategoria("promocao.categoria", evento);   // categoria → clientes inscritos
             }
         } catch (Exception e) {
             System.err.println("[Gateway SSE] Erro: " + e.getMessage());

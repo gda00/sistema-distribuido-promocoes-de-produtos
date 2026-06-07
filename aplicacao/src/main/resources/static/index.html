@@ -722,21 +722,21 @@
     }
 
     // ── Votar ─────────────────────────────────────────────────────────
+    // Substitua a função votar inteira
     async function votar(idPromocao, idItem, categoria, voto, btn) {
         if (votosLocais[idPromocao]) {
             showToast('info', 'Voto', 'Você já votou nesta promoção.');
             return;
         }
-        const payload = { idPromocao, idItem, categoria, voto };
         try {
-            const res = await fetch(`${BASE_URL}/api/votos`, {
+            // idItem vai no path; voto e categoria no body
+            const res = await fetch(`${BASE_URL}/api/promocoes/${encodeURIComponent(idItem)}/votos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ voto, categoria })
             });
             if (res.ok) {
                 votosLocais[idPromocao] = voto;
-                // Atualizar visual do card
                 const card = document.getElementById('card-' + idPromocao);
                 if (card) {
                     card.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('voted'));
@@ -771,7 +771,7 @@
         if (jaSegue) {
             // Cancelar interesse
             try {
-                await fetch(`${BASE_URL}/api/interesses/${categoria}`, { method: 'DELETE' });
+                await fetch(`${BASE_URL}/api/interesses/${categoria}?clientId=${CLIENT_ID}`, { method: 'DELETE' });
             } catch { /* endpoint pode não existir ainda */ }
             categoriasAtivas.delete(categoria);
             chip.classList.remove('followed');

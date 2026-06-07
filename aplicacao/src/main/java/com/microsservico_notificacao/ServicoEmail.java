@@ -57,6 +57,10 @@ public class ServicoEmail {
 
     // Método interno: monta o JSON e faz a chamada HTTP para o Resend
     private static void enviar(String destinatario, String assunto, String corpoHtml) {
+        if (API_KEY.equals("SEM_CHAVE_CONFIGURADA")) {
+            System.out.println("[EmailService] RESEND_API_KEY não configurada — e-mail simulado para: " + destinatario);
+            return;
+        }
         // Monta o JSON manualmente (sem dependência extra)
         String json = "{"
                 + "\"from\":\"" + REMETENTE + "\","

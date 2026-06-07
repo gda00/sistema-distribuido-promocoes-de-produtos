@@ -19,7 +19,7 @@ public class GatewayController {
         this.gatewayService = gatewayService;
     }
 
-    @PostMapping("/promocoes")
+    @PostMapping("api/promocoes")
     public ResponseEntity<String> cadastrarPromocao(@RequestBody DadosEvento dados) {
         try {
             gatewayService.cadastrarPromocao(dados);
@@ -29,12 +29,12 @@ public class GatewayController {
         }
     }
 
-    @GetMapping("/promocoes")
+    @GetMapping("api/promocoes")
     public ResponseEntity<List<String>> listarPromocoes() {
         return ResponseEntity.ok(gatewayService.listarPromocoes());
     }
 
-    @PostMapping("/promocoes/{id}/votos")
+    @PostMapping("api/promocoes/{id}/votos")
     public ResponseEntity<String> votar(
             @PathVariable String id,
             @RequestBody DadosEvento voto) {
@@ -46,32 +46,22 @@ public class GatewayController {
         }
     }
 
-    @PostMapping("/interesses")
-    public ResponseEntity<String> adicionarInteresse(
-            @RequestHeader("X-Client-Id") String clienteId,
-            @RequestBody Map<String, String> body) {
-        gatewayService.adicionarInteresse(clienteId, body.get("categoria"));
-        return ResponseEntity.ok("Interesse registrado em: " + body.get("categoria"));
+    @PostMapping("api/interesses")
+    public ResponseEntity<String> adicionarInteresse(@RequestBody Map<String, String> body) {
+        gatewayService.adicionarInteresse(body.get("clientId"), body.get("categoria"));
+        return ResponseEntity.ok("Interesse registrado.");
     }
 
-    @DeleteMapping("/interesses/{categoria}")
+    @DeleteMapping("api/interesses/{categoria}")
     public ResponseEntity<String> removerInteresse(
-            @RequestHeader("X-Client-Id") String clienteId,
-            @PathVariable String categoria) {
-        gatewayService.removerInteresse(clienteId, categoria);
-        return ResponseEntity.ok("Interesse cancelado: " + categoria);
+            @PathVariable String categoria,
+            @RequestParam String clientId) {
+        gatewayService.removerInteresse(clientId, categoria);
+        return ResponseEntity.ok("Interesse cancelado.");
     }
 
-    @GetMapping(value = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter sse() {
-        String clienteId = UUID.randomUUID().toString();
-        SseEmitter emitter = gatewayService.novaConexao(clienteId);
-
-        try {
-            emitter.send(SseEmitter.event().name("connected").data(clienteId));
-        } catch (IOException ignored) {
-        }
-
-        return emitter;
+    @GetMapping(value = "api/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter sse(@RequestParam String clientId) {
+        return gatewayService.novaConexao(clientId);
     }
 }
