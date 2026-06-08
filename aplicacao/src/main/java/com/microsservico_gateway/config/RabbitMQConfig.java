@@ -23,12 +23,12 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue gatewayQueue() {
-        return new Queue(GATEWAY_QUEUE, false);
+        return new Queue(GATEWAY_QUEUE, true);
     }
 
     @Bean
     public Queue sseQueue() {
-        return new Queue(SSE_QUEUE, false);
+        return new Queue(SSE_QUEUE, true);
     }
 
     @Bean

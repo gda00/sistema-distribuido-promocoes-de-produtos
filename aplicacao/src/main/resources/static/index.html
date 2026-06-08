@@ -619,7 +619,7 @@
     // ── Estado local ──────────────────────────────────────────────────
     let todasPromocoes  = [];
     let hotDeals        = new Set();     // idItem dos hot deals
-    let votosLocais     = {};            // idPromocao → 'positivo' | 'negativo'
+
     let categoriasAtivas= new Set();    // categorias seguidas pelo usuário
     let filtroAtual     = '';
     let notificacoes    = [];
@@ -641,7 +641,6 @@
         try {
             const res  = await fetch(`${BASE_URL}/api/promocoes`);
             const raw  = await res.json();
-            // A API retorna List<String>: cada elemento é um JSON string
             todasPromocoes = raw.map(item => {
                 try { return typeof item === 'string' ? JSON.parse(item) : item; }
                 catch { return null; }
@@ -681,13 +680,12 @@
     }
 
     function buildCard(p) {
-        const id     = p.idPromocao || '';
-        const nome   = p.idItem || 'Produto';
-        const cat    = stripPrefix(p.categoria);
-        const valor  = p.valor || '';
-        const desc   = p.descricao || '';
-        const isHot  = hotDeals.has(p.idItem);
-        const meuVoto= votosLocais[id] || '';
+        const id    = p.idPromocao || '';
+        const nome  = p.idItem || 'Produto';
+        const cat   = stripPrefix(p.categoria);
+        const valor = p.valor || '';
+        const desc  = p.descricao || '';
+        const isHot = hotDeals.has(p.idItem);
 
         return `
     <div class="promo-card ${isHot ? 'hot' : ''}" id="card-${id}">
@@ -701,53 +699,48 @@
       </div>
       ${desc ? `<p class="card-desc">${escHtml(desc)}</p>` : ''}
       <div class="card-actions">
-        <button class="vote-btn up ${meuVoto === 'positivo' ? 'voted' : ''}"
+        <button class="vote-btn up"
                 onclick="votar('${escHtml(id)}', '${escHtml(nome)}', '${escHtml(cat)}', 'positivo', this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
             <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
           </svg>
-          Curtir
+          +1
         </button>
-        <button class="vote-btn down ${meuVoto === 'negativo' ? 'voted' : ''}"
+        <button class="vote-btn down"
                 onclick="votar('${escHtml(id)}', '${escHtml(nome)}', '${escHtml(cat)}', 'negativo', this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
             <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
           </svg>
-          Não curtir
+          -1
         </button>
       </div>
     </div>`;
     }
 
     // ── Votar ─────────────────────────────────────────────────────────
-    // Substitua a função votar inteira
     async function votar(idPromocao, idItem, categoria, voto, btn) {
-        if (votosLocais[idPromocao]) {
-            showToast('info', 'Voto', 'Você já votou nesta promoção.');
-            return;
-        }
+        btn.disabled = true;
         try {
-            // idItem vai no path; voto e categoria no body
             const res = await fetch(`${BASE_URL}/api/promocoes/${encodeURIComponent(idItem)}/votos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ voto, categoria })
             });
             if (res.ok) {
-                votosLocais[idPromocao] = voto;
-                const card = document.getElementById('card-' + idPromocao);
-                if (card) {
-                    card.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('voted'));
-                    btn.classList.add('voted');
-                }
-                showToast('categoria', 'Voto registrado', `Seu voto em "${idItem}" foi contabilizado.`);
+                const label = voto === 'positivo' ? '+1' : '-1';
+                // Flash visual de feedback no botão
+                btn.classList.add(voto === 'positivo' ? 'voted' : 'voted');
+                setTimeout(() => btn.classList.remove('voted'), 600);
+                showToast('categoria', 'Voto registrado', `${label} em "${idItem}"`);
             } else {
                 showToast('hotdeal', 'Erro', 'Não foi possível registrar o voto.');
             }
         } catch {
             showToast('hotdeal', 'Erro de conexão', 'Servidor indisponível.');
+        } finally {
+            btn.disabled = false;
         }
     }
 
@@ -772,7 +765,9 @@
             // Cancelar interesse
             try {
                 await fetch(`${BASE_URL}/api/interesses/${categoria}?clientId=${CLIENT_ID}`, { method: 'DELETE' });
-            } catch { /* endpoint pode não existir ainda */ }
+            } catch (e) {
+                showToast('hotdeal', 'Erro', 'Não foi possível cancelar o interesse.');
+            }
             categoriasAtivas.delete(categoria);
             chip.classList.remove('followed');
             chip.querySelector('.chip-follow-btn').textContent = '＋';
@@ -785,7 +780,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ clientId: CLIENT_ID, categoria })
                 });
-            } catch { /* endpoint pode não existir ainda */ }
+            } catch (e) {
+                showToast('hotdeal', 'Erro', 'Não foi possível registrar o interesse.');
+            }
             categoriasAtivas.add(categoria);
             chip.classList.add('followed');
             chip.querySelector('.chip-follow-btn').textContent = '✓';
@@ -812,7 +809,7 @@
 
         const payload = {
             idPromocao: generateUUID(),
-            categoria,       // backend adiciona "categoria." automaticamente
+            categoria,
             idItem,
             valor,
             emailLoja,
@@ -850,7 +847,7 @@
         const label = document.getElementById('sse-label');
 
         try {
-            // Passa o clientId como query param para o Gateway filtrar por interesse
+
             const evtSource = new EventSource(`${BASE_URL}/api/sse?clientId=${CLIENT_ID}`);
 
             evtSource.onopen = () => {
@@ -858,7 +855,6 @@
                 label.textContent = 'SSE conectado';
             };
 
-            // Evento de categoria (promoção na categoria seguida)
             evtSource.addEventListener('promocao.categoria', e => {
                 const data = parseSSE(e.data);
                 if (!data) return;
@@ -868,14 +864,20 @@
                 addNotification('categoria', `[${cat}] ${data.idItem} — ${data.valor}`);
             });
 
-            // Evento de hot deal (exibir para todos)
+
             evtSource.addEventListener('notificacao.hotdeal', e => {
                 const data = parseSSE(e.data);
                 if (!data) return;
-                hotDeals.add(data.idItem);
-                showToast('hotdeal', '🔥 Hot Deal!', `"${data.idItem}" está em destaque!`);
-                addNotification('hotdeal', `Hot Deal: ${data.idItem} — ${data.valor}`);
-                // Atualizar card se estiver visível
+
+                if (data.status === 'REMOVIDO') {
+                    hotDeals.delete(data.idItem);
+                    //showToast('categoria', 'Destaque removido', `"${data.idItem}" saiu dos destaques.`);
+                    //addNotification('categoria', `Saiu do destaque: ${data.idItem}`);
+                } else {
+                    hotDeals.add(data.idItem);
+                    showToast('hotdeal', 'Hot Deal!', `"${data.idItem}" está em destaque!`);
+                    addNotification('hotdeal', `Hot Deal: ${data.idItem} — ${data.valor}`);
+                }
                 renderPromocoes();
             });
 

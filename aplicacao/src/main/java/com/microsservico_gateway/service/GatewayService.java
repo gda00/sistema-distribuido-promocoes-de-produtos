@@ -31,6 +31,7 @@ public class GatewayService {
 
     public GatewayService(RabbitTemplate rabbitTemplate) throws NoSuchAlgorithmException, IOException {
         this.rabbitTemplate = rabbitTemplate;
+
         this.keyPair = Criptografia.gerarPardeChaves();
         String chavePublicaBase64 = Base64.getEncoder()
                 .encodeToString(keyPair.getPublic().getEncoded());
@@ -110,6 +111,7 @@ public class GatewayService {
         }
     }
 
+    //tirar cepa
     @RabbitListener(queues = RabbitMQConfig.SSE_QUEUE)
     public void receberEventoSSE(Message message) {
         String routingKey = message.getMessageProperties().getReceivedRoutingKey();

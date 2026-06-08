@@ -16,6 +16,8 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.Base64;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 
 public class MicrosservicoNotificacao {
@@ -47,6 +49,8 @@ public class MicrosservicoNotificacao {
 
     private final static String CHAVE_PUBLICA_BASE64 =
             Base64.getEncoder().encodeToString(KEYPAIR.getPublic().getEncoded());
+
+    private final static Map<String, String> EMAIL_POR_ITEM = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException, TimeoutException {
         GerenciadorDeChaves.salvarChave(CLASS_NAME, CHAVE_PUBLICA_BASE64);
@@ -114,6 +118,10 @@ public class MicrosservicoNotificacao {
 
         System.out.println("[MS Notificação] Promoção publicada: " + dados.getIdItem());
 
+        if (dados.getEmailLoja() != null && dados.getIdItem() != null) {
+            EMAIL_POR_ITEM.put(dados.getIdItem(), dados.getEmailLoja());
+        }
+
         ServicoEmail.enviarEmailPromocaoAprovada(
                 dados.getEmailLoja(),
                 dados.getIdItem(),
@@ -126,17 +134,22 @@ public class MicrosservicoNotificacao {
     private static void tratarPromocaoDestaque(DadosEvento dados, String dadosJson, Channel channel)
             throws Exception {
 
-        System.out.println("[MS Notificação] Hot Deal detectado: " + dados.getIdItem());
+        String status = dados.getStatus(); // "ADICIONADO" ou "REMOVIDO"
+        System.out.println("[MS Notificação] Destaque recebido: " + dados.getIdItem()
+                + " | status: " + status);
 
-        //e-mail
-        ServicoEmail.enviarEmailHotDeal(
-                dados.getEmailLoja(),
-                dados.getIdItem(),
-                dados.getIdPromocao());
+        String email = dados.getEmailLoja() != null
+                ? dados.getEmailLoja()
+                : EMAIL_POR_ITEM.get(dados.getIdItem());
+
+        if ("ADICIONADO".equals(status)) {
+
+            ServicoEmail.enviarEmailHotDeal(email, dados.getIdItem(), dados.getIdPromocao());
+        }
 
         publicarParaGateway(channel, OUTPUT_ROUTING_KEY_HOTDEAL, dadosJson);
     }
-    
+
     private static void publicarParaGateway(Channel channel, String routingKey, String dadosJson)
             throws Exception {
 
