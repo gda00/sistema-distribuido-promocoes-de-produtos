@@ -25,13 +25,12 @@ public class MicrosservicoRanking {
 
     private final static int HOT_DEAL_SCORE = 2;
 
-    // score atual de cada promoção
+    // score atual
     private final static Map<String, Integer> RANKING = new ConcurrentHashMap<>();
 
-    // promoções que ESTÃO em destaque no momento
+    // promoções que ESTÃO em destaque
     private final static Set<String> HOT_DEAL = ConcurrentHashMap.newKeySet();
 
-    // cache de dados completos da promoção (idItem → DadosEvento com emailLoja, idPromocao, etc.)
     // populado ao consumir "promocao.publicada"
     private final static Map<String, DadosEvento> CACHE_PROMOCOES = new ConcurrentHashMap<>();
 
@@ -72,7 +71,6 @@ public class MicrosservicoRanking {
         channel.exchangeDeclare(EXCHANGE_NAME, EXCHANGE_TYPE);
         channel.queueDeclare(QUEUE_RANKING, true, false, false, null);
 
-        // escuta votos E promoções publicadas (para cache de emailLoja)
         channel.queueBind(QUEUE_RANKING, EXCHANGE_NAME, ROUTING_VOTO);
         channel.queueBind(QUEUE_RANKING, EXCHANGE_NAME, ROUTING_PUBLICADA);
 
@@ -111,7 +109,7 @@ public class MicrosservicoRanking {
         DadosEvento dados = new Gson().fromJson(envelope.getDados(), DadosEvento.class);
 
         if (ROUTING_PUBLICADA.equals(routingKey)) {
-            // popular cache com dados completos da promoção (tem emailLoja, idPromocao, valor, etc.)
+            // popular cache com dados completos
             if (dados.getIdItem() != null) {
                 CACHE_PROMOCOES.put(dados.getIdItem(), dados);
                 System.out.println("[MS Ranking] Cache atualizado para: " + dados.getIdItem());
@@ -148,10 +146,10 @@ public class MicrosservicoRanking {
     private static void publicarDestaque(String idItem, String status, Channel channel)
             throws Exception {
 
-        // enriquecer com dados completos do cache (tem emailLoja, idPromocao, valor, categoria)
+        // enriquecer com dados completos do cache
         DadosEvento dados = CACHE_PROMOCOES.getOrDefault(idItem, new DadosEvento());
         dados.setStatus(status);
-        dados.setIdItem(idItem); // garantir que está preenchido
+        dados.setIdItem(idItem);
 
         String dadosJson  = new Gson().toJson(dados);
         String assinatura = Criptografia.assinarMensagem(dadosJson, KEYPAIR.getPrivate());
